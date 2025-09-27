@@ -69,7 +69,7 @@ serve(async (req) => {
       template, 
       theme, 
       content,
-      model = 'glm-4.5-air',
+      model = 'gpt-4o-mini',
       generateImages = true,
       generateCaption = true,
       generateHashtags = true,
@@ -164,56 +164,36 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
     let requestBody;
     let headers;
 
-    if (model === 'glm-4.5-air') {
-      // Use GLM-4.5-Air API diretamente
-      apiUrl = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-      headers = {
-        'Authorization': `Bearer ${zaiApiKey || openRouterApiKey}`,
-        'Content-Type': 'application/json',
-      };
-      requestBody = {
-        model: 'glm-4-air',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        max_tokens: 2000,
-        temperature: 0.7,
-        stream: false
-      };
-    } else {
-      // Use OpenRouter for other models with working endpoints
-      let workingModel = model;
-      
-      // Map non-working models to working alternatives
-      if (model === 'glm-4-9b' || model === 'glm-4-32b') {
-        workingModel = 'gpt-4o-mini';
-        console.log(`Model ${model} not available, using ${workingModel} instead`);
-      }
-      
-      const fullModelName = workingModel.includes('/') ? workingModel : 
-        workingModel === 'gpt-4o-mini' ? 'openai/gpt-4o-mini' :
-        workingModel === 'gpt-4o' ? 'openai/gpt-4o' :
-        workingModel === 'claude-3-sonnet-20240229' ? 'anthropic/claude-3-sonnet-20240229' :
-        `${AI_MODELS[workingModel]?.provider || 'openai'}/${workingModel}`;
-        
-      apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
-      headers = {
-        'Authorization': `Bearer ${openRouterApiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://postcraft.app',
-        'X-Title': 'PostCraft - AI Content Generator',
-      };
-      requestBody = {
-        model: fullModelName,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        max_tokens: 2000,
-        temperature: 0.7,
-      };
+    // Use only OpenRouter with working models
+    let workingModel = model;
+    
+    // Map all models to working OpenRouter models
+    if (model === 'glm-4.5-air' || model === 'glm-4-9b' || model === 'glm-4-32b') {
+      workingModel = 'gpt-4o-mini';
+      console.log(`Model ${model} not available, using ${workingModel} instead`);
     }
+    
+    const fullModelName = workingModel === 'gpt-4o-mini' ? 'openai/gpt-4o-mini' :
+      workingModel === 'gpt-4o' ? 'openai/gpt-4o' :
+      workingModel === 'claude-3-sonnet-20240229' ? 'anthropic/claude-3-sonnet-20240229' :
+      `openai/${workingModel}`;
+      
+    apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+    headers = {
+      'Authorization': `Bearer ${openRouterApiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://postcraft.app',
+      'X-Title': 'PostCraft - AI Content Generator',
+    };
+    requestBody = {
+      model: fullModelName,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      max_tokens: 2000,
+      temperature: 0.7,
+    };
     
     console.log('Using model:', model, 'API URL:', apiUrl);
 

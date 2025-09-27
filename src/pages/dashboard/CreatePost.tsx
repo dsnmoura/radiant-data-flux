@@ -119,7 +119,7 @@ const CreatePost = () => {
           content: postContent,
           objective: "Criar conteúdo engajante",
           theme: postContent,
-          model: 'glm-4.5-air',
+          model: 'gpt-4o-mini',
           generateImages: true,
           generateCaption: true,
           generateHashtags: true
