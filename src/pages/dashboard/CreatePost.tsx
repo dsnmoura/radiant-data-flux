@@ -119,7 +119,7 @@ const CreatePost = () => {
           content: postContent,
           objective: "Criar conteúdo engajante",
           theme: postContent,
-          model: 'glm-4-9b',
+          model: 'glm-4.5-air',
           generateImages: true,
           generateCaption: true,
           generateHashtags: true
@@ -474,7 +474,7 @@ const CreatePost = () => {
                           ? generatedPost.hashtags.join(' ')
                           : generatedPost.hashtags,
                         images: generatedPost.generated_images || [],
-                        model_used: generatedPost.model_used || 'glm-4-9b',
+                        model_used: generatedPost.model_used || 'glm-4.5-air',
                         created_at: new Date().toISOString()
                       };
 

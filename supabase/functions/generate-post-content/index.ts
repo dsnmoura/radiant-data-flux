@@ -165,7 +165,7 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
     let headers;
 
     if (model === 'glm-4.5-air') {
-      // Use Z.AI GLM 4.5 Air (free) API
+      // Use GLM-4.5-Air API diretamente
       apiUrl = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
       headers = {
         'Authorization': `Bearer ${zaiApiKey || openRouterApiKey}`,
@@ -179,10 +179,24 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
         ],
         max_tokens: 2000,
         temperature: 0.7,
+        stream: false
       };
     } else {
-      // Use OpenRouter for other models
-      const fullModelName = model.includes('/') ? model : `${AI_MODELS[model]?.provider || 'thudm'}/${model}`;
+      // Use OpenRouter for other models with working endpoints
+      let workingModel = model;
+      
+      // Map non-working models to working alternatives
+      if (model === 'glm-4-9b' || model === 'glm-4-32b') {
+        workingModel = 'gpt-4o-mini';
+        console.log(`Model ${model} not available, using ${workingModel} instead`);
+      }
+      
+      const fullModelName = workingModel.includes('/') ? workingModel : 
+        workingModel === 'gpt-4o-mini' ? 'openai/gpt-4o-mini' :
+        workingModel === 'gpt-4o' ? 'openai/gpt-4o' :
+        workingModel === 'claude-3-sonnet-20240229' ? 'anthropic/claude-3-sonnet-20240229' :
+        `${AI_MODELS[workingModel]?.provider || 'openai'}/${workingModel}`;
+        
       apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
       headers = {
         'Authorization': `Bearer ${openRouterApiKey}`,
