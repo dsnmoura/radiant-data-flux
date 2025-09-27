@@ -17,6 +17,12 @@ type ModelConfig = {
 };
 
 const AI_MODELS: Record<string, ModelConfig> = {
+  'glm-4.5-air': {
+    name: 'GLM-4.5 Air',
+    provider: 'zhipu',
+    fast: true,
+    cost: 'free'
+  },
   'glm-4-32b': {
     name: 'GLM-4 32B',
     provider: 'thudm',
@@ -62,7 +68,7 @@ serve(async (req) => {
       template, 
       theme, 
       content,
-      model = 'glm-4-9b',
+      model = 'glm-4.5-air',
       generateImages = true,
       generateCaption = true,
       generateHashtags = true,
@@ -151,20 +157,39 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
 
     const userPrompt = customPrompt || `Crie conteúdo profissional e engajante para: ${contentToProcess}`;
 
-    // Determine the full model name for OpenRouter
-    const fullModelName = model.includes('/') ? model : `${AI_MODELS[model]?.provider || 'thudm'}/${model}`;
-    
-    console.log('Using model:', fullModelName);
+    // Use different API based on model
+    let response;
+    let apiUrl;
+    let requestBody;
+    let headers;
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
+    if (model === 'glm-4.5-air') {
+      // Use Z.AI GLM 4.5 Air (free) API
+      apiUrl = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+      headers = {
+        'Authorization': `Bearer ${openRouterApiKey}`, // Will use same key for now
+        'Content-Type': 'application/json',
+      };
+      requestBody = {
+        model: 'glm-4-air',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        max_tokens: 2000,
+        temperature: 0.7,
+      };
+    } else {
+      // Use OpenRouter for other models
+      const fullModelName = model.includes('/') ? model : `${AI_MODELS[model]?.provider || 'thudm'}/${model}`;
+      apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+      headers = {
         'Authorization': `Bearer ${openRouterApiKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://postcraft.app',
         'X-Title': 'PostCraft - AI Content Generator',
-      },
-      body: JSON.stringify({
+      };
+      requestBody = {
         model: fullModelName,
         messages: [
           { role: 'system', content: systemPrompt },
@@ -172,13 +197,27 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
         ],
         max_tokens: 2000,
         temperature: 0.7,
-      }),
+      };
+    }
+    
+    console.log('Using model:', model, 'API URL:', apiUrl);
+
+    response = await fetch(apiUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('OpenRouter API error:', errorData);
-      throw new Error(`OpenRouter API error: ${response.status} - ${errorData}`);
+      console.error('API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        url: apiUrl,
+        model,
+        error: errorData
+      });
+      throw new Error(`API error: ${response.status} - ${errorData}`);
     }
 
     const data = await response.json();
@@ -325,11 +364,16 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error in generate-post-content function:', error);
+    console.error('Error in generate-post-content function:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    });
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : 'Unknown error',
       success: false,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      details: error instanceof Error ? error.stack : undefined
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
