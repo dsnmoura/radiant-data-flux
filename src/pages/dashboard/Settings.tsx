@@ -61,6 +61,45 @@ const Settings = () => {
     }
   };
 
+  const testOpenAIConnection = async () => {
+    setIsTesting(true);
+    setTestResult("");
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-post-content', {
+        body: {
+          network: 'instagram',
+          template: 'ig-post',
+          objective: 'Teste',
+          theme: 'Teste de conexão com OpenAI API para geração de imagens',
+          generateImages: true,
+          generateCaption: false,
+          generateHashtags: false
+        }
+      });
+
+      if (error) {
+        setTestResult(`Erro: ${error.message}`);
+        toast.error("Falha no teste OpenAI");
+        return;
+      }
+
+      if (data?.generated_images && data.generated_images.length > 0) {
+        setTestResult("✅ Conexão com OpenAI funcionando perfeitamente!");
+        toast.success("Teste OpenAI bem-sucedido!");
+      } else {
+        setTestResult("⚠️ OpenAI conectado, mas sem geração de imagens");
+        toast.warning("Teste parcialmente bem-sucedido");
+      }
+    } catch (error) {
+      console.error('Erro no teste OpenAI:', error);
+      setTestResult("❌ Falha na conexão com OpenAI API");
+      toast.error("Erro no teste OpenAI");
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -170,6 +209,103 @@ const Settings = () => {
               <li>• Hashtags otimizadas para cada rede social</li>
               <li>• Prompts para geração de imagens (carrossel)</li>
               <li>• Adaptação automática para Instagram, LinkedIn e TikTok</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Configurações OpenAI */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            Integração OpenAI
+          </CardTitle>
+          <CardDescription>
+            Configure a integração com OpenAI para geração de imagens avançadas
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Status da Integração OpenAI */}
+          <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+              <div>
+                <p className="font-medium">OpenAI API</p>
+                <p className="text-sm text-muted-foreground">Para geração de imagens de alta qualidade</p>
+              </div>
+            </div>
+            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+              <Check className="h-3 w-3 mr-1" />
+              Configurado
+            </Badge>
+          </div>
+
+          {/* Recursos OpenAI */}
+          <div className="space-y-2">
+            <Label>Recursos Disponíveis</Label>
+            <div className="grid gap-2">
+              <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg">
+                <Zap className="h-4 w-4 text-blue-600" />
+                <span className="font-medium">GPT-4 Vision</span>
+                <Badge variant="outline">Análise de Imagens</Badge>
+              </div>
+              <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg">
+                <Bot className="h-4 w-4 text-blue-600" />
+                <span className="font-medium">DALL-E 3</span>
+                <Badge variant="outline">Geração de Imagens</Badge>
+              </div>
+            </div>
+          </div>
+
+          {/* Teste OpenAI */}
+          <div className="space-y-4 p-4 border rounded-lg">
+            <div className="flex items-center gap-2">
+              <TestTube className="h-4 w-4" />
+              <h4 className="font-medium">Testar OpenAI</h4>
+            </div>
+            
+            <p className="text-sm text-muted-foreground">
+              Teste a geração de imagens com OpenAI DALL-E
+            </p>
+            
+            <Button 
+              onClick={testOpenAIConnection}
+              disabled={isTesting}
+              variant="outline"
+              className="w-full"
+            >
+              {isTesting ? (
+                <>
+                  <SettingsIcon className="h-4 w-4 mr-2 animate-spin" />
+                  Testando OpenAI...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Testar Geração de Imagens
+                </>
+              )}
+            </Button>
+
+            {testResult && (
+              <div className="mt-3 p-3 bg-muted/30 rounded-lg">
+                <p className="text-sm font-mono">{testResult}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Informações OpenAI */}
+          <div className="space-y-3 p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-green-600" />
+              <h4 className="font-medium text-green-900 dark:text-green-100">Sobre OpenAI</h4>
+            </div>
+            <ul className="text-sm text-green-800 dark:text-green-200 space-y-1 ml-6">
+              <li>• Geração de imagens de alta qualidade com DALL-E</li>
+              <li>• Análise visual avançada com GPT-4 Vision</li>
+              <li>• Integração automática para carrosséis de imagens</li>
+              <li>• Fallback inteligente para OpenRouter quando necessário</li>
             </ul>
           </div>
         </CardContent>
