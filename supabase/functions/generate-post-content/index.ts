@@ -283,11 +283,12 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
     let generatedImages = [];
     if (generateImages && generatedContent.carousel_prompts && Array.isArray(generatedContent.carousel_prompts)) {
       console.log('Generating images for carousel using OpenAI...');
+      console.log('This may take 30-60 seconds, please wait...');
       
       if (!openAIApiKey) {
         console.log('OpenAI API key not configured, using OpenRouter Flux model as fallback');
         
-        // Fallback to OpenRouter Flux model
+        // Fallback to OpenRouter Flux model (keep existing code)
         for (const prompt of generatedContent.carousel_prompts.slice(0, 3)) {
           try {
             const enhancedPrompt = `${prompt}. High quality, professional, suitable for ${network} social media post. Modern design, vibrant colors, engaging composition.`;
@@ -317,7 +318,6 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
             if (imageResponse.ok) {
               const imageData = await imageResponse.json();
               console.log('OpenRouter Image generation success');
-              console.log('Image data:', imageData);
               
               // Handle different response formats from OpenRouter
               let imageUrl = null;
@@ -354,15 +354,17 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
           }
         }
       } else {
-        console.log('Starting image generation with OpenAI API...');
-        console.log('OpenAI API Key exists:', !!openAIApiKey);
+        console.log('Starting image generation with OpenAI DALL-E 3...');
+        console.log('OpenAI API Key configured, generating high-quality images...');
         
-        for (const prompt of generatedContent.carousel_prompts.slice(0, 3)) {
+        // Generate images sequentially to avoid rate limits
+        for (let i = 0; i < Math.min(generatedContent.carousel_prompts.length, 3); i++) {
+          const prompt = generatedContent.carousel_prompts[i];
+          
           try {
             const enhancedPrompt = `${prompt}. High quality, professional, suitable for ${network} social media post. Modern design, vibrant colors, engaging composition.`;
             
-            console.log(`Attempting to generate image for prompt: ${prompt.substring(0, 50)}...`);
-            console.log('Using OpenAI model: dall-e-3');
+            console.log(`[${i + 1}/3] Generating image with DALL-E 3 for: ${prompt.substring(0, 50)}...`);
             
             const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
               method: 'POST',
@@ -380,41 +382,51 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
               }),
             });
 
-            console.log(`OpenAI API response status: ${imageResponse.status}`);
-            console.log(`OpenAI API response ok: ${imageResponse.ok}`);
+            console.log(`[${i + 1}/3] OpenAI API response status: ${imageResponse.status}`);
 
             if (imageResponse.ok) {
               const imageData = await imageResponse.json();
-              console.log('OpenAI Image generation success for prompt:', prompt.substring(0, 50) + '...');
-              console.log('Image data structure keys:', Object.keys(imageData));
+              console.log(`[${i + 1}/3] DALL-E 3 generation success!`);
               
               if (imageData.data && imageData.data[0] && imageData.data[0].b64_json) {
+                // Convert base64 to data URL for immediate use
+                const dataUrl = `data:image/png;base64,${imageData.data[0].b64_json}`;
+                
                 generatedImages.push({
                   prompt: prompt,
-                  image: imageData.data[0].b64_json,
+                  url: dataUrl, // Frontend expects 'url' property
+                  image: imageData.data[0].b64_json, // Keep base64 for download
                   format: 'png',
                   revised_prompt: imageData.data[0].revised_prompt || prompt
                 });
-                console.log(`Successfully generated image ${generatedImages.length} for carousel`);
+                
+                console.log(`[${i + 1}/3] Successfully generated and converted image to data URL`);
               } else {
-                console.error('Unexpected image data structure:', imageData);
+                console.error(`[${i + 1}/3] Unexpected DALL-E response structure:`, imageData);
               }
             } else {
               const errorText = await imageResponse.text();
-              console.error('OpenAI API Error:', {
+              console.error(`[${i + 1}/3] DALL-E 3 API Error:`, {
                 status: imageResponse.status,
                 statusText: imageResponse.statusText,
                 error: errorText,
                 prompt: prompt.substring(0, 50) + '...'
               });
             }
+            
+            // Add delay between requests to avoid rate limits
+            if (i < 2) {
+              console.log(`Waiting 2 seconds before next image generation...`);
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            
           } catch (error) {
-            console.error('Error generating image for prompt:', prompt.substring(0, 50) + '...', 'Error:', error instanceof Error ? error.message : 'Unknown error');
+            console.error(`[${i + 1}/3] Error generating image:`, error instanceof Error ? error.message : 'Unknown error');
           }
         }
       }
       
-      console.log(`Generated ${generatedImages.length} images out of ${generatedContent.carousel_prompts.length} prompts`);
+      console.log(`Image generation complete: ${generatedImages.length} images generated out of ${Math.min(generatedContent.carousel_prompts.length, 3)} requested`);
     }
 
     const result = {

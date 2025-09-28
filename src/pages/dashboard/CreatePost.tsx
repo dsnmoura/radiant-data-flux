@@ -356,7 +356,12 @@ const CreatePost = () => {
                   {isGenerating ? (
                     <>
                       <Settings className="h-4 w-4 mr-2 animate-spin" />
-                      Gerando...
+                      <span className="flex flex-col items-start">
+                        <span>Gerando conteúdo...</span>
+                        <span className="text-xs opacity-75">
+                          Legendas, hashtags e imagens (30-60s)
+                        </span>
+                      </span>
                     </>
                   ) : (
                     <>
@@ -394,14 +399,25 @@ const CreatePost = () => {
                       src={generatedPost.generated_images[0].url} 
                       alt="Post gerado"
                       className="w-full h-full object-cover rounded-lg"
+                      onError={(e) => {
+                        console.error('Erro ao carregar imagem:', e);
+                        e.currentTarget.style.display = 'none';
+                      }}
                     />
                   ) : (
                     <div className="text-center space-y-2">
                       <Image className="h-12 w-12 text-primary mx-auto" />
                       <p className="text-sm font-medium">Post Visual</p>
                       <p className="text-xs text-muted-foreground">
-                        {isGenerating ? "Gerando imagem..." : "Imagem não gerada pela IA"}
+                        {isGenerating ? "Gerando imagens com IA..." : "Imagem não gerada pela IA"}
                       </p>
+                      {isGenerating && (
+                        <div className="mt-2">
+                          <div className="animate-pulse text-xs text-muted-foreground">
+                            Aguarde 30-60 segundos para geração das imagens...
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -441,12 +457,36 @@ const CreatePost = () => {
                     if (generatedPost?.generated_images?.length > 0) {
                       // Baixar todas as imagens geradas
                       generatedPost.generated_images.forEach((image, index) => {
-                        const link = document.createElement('a');
-                        link.href = image.url;
-                        link.download = `post-image-${index + 1}.png`;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
+                        let downloadUrl = image.url;
+                        let filename = `post-image-${index + 1}.png`;
+                        
+                        // Se a imagem é base64, converter para blob
+                        if (image.url && image.url.startsWith('data:image')) {
+                          const link = document.createElement('a');
+                          link.href = image.url;
+                          link.download = filename;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        } else if (image.image) {
+                          // Se temos base64 na propriedade image
+                          const dataUrl = `data:image/png;base64,${image.image}`;
+                          const link = document.createElement('a');
+                          link.href = dataUrl;
+                          link.download = filename;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        } else if (image.url) {
+                          // URL externa
+                          const link = document.createElement('a');
+                          link.href = image.url;
+                          link.download = filename;
+                          link.target = '_blank';
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }
                       });
                       toast.success(`${generatedPost.generated_images.length} imagem(ns) baixada(s) com sucesso!`);
                     } else {
