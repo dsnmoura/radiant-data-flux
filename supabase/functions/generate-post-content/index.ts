@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const openRouterApiKey = Deno.env.get('OPENROUTER_API_KEY');
 const zaiApiKey = Deno.env.get('ZAI_API_KEY');
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -274,66 +275,59 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
       throw new Error('Invalid content structure generated');
     }
 
-    // Generate images using OpenRouter if requested and prompts exist
+    // Generate images using OpenAI API if requested and prompts exist
     let generatedImages = [];
     if (generateImages && generatedContent.carousel_prompts && Array.isArray(generatedContent.carousel_prompts)) {
-      console.log('Generating images for carousel...');
+      console.log('Generating images for carousel using OpenAI...');
       
-      for (const prompt of generatedContent.carousel_prompts.slice(0, 3)) {
-        try {
-          const imageResponse = await fetch('https://openrouter.ai/api/v1/images/generations', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${openRouterApiKey}`,
-              'Content-Type': 'application/json',
-              'HTTP-Referer': 'https://postcraft.app',
-              'X-Title': 'PostCraft - AI Image Generator',
-            },
-            body: JSON.stringify({
-              model: 'black-forest-labs/flux-1-schnell',
-              prompt: `${prompt}. High quality, professional, suitable for ${network} social media post. Modern design, vibrant colors, engaging composition.`,
-              width: 1024,
-              height: 1024,
-              steps: 4,
-              response_format: 'url'
-            }),
-          });
-
-          if (imageResponse.ok) {
-            const imageData = await imageResponse.json();
-            console.log('Image generation response:', imageData);
+      if (!openAIApiKey) {
+        console.error('OpenAI API key not configured for image generation');
+      } else {
+        for (const prompt of generatedContent.carousel_prompts.slice(0, 3)) {
+          try {
+            const enhancedPrompt = `${prompt}. High quality, professional, suitable for ${network} social media post. Modern design, vibrant colors, engaging composition.`;
             
-            // Handle different response formats
-            if (imageData.data && imageData.data[0]) {
-              // OpenAI format
-              generatedImages.push({
-                prompt: prompt,
-                url: imageData.data[0].url,
-                revised_prompt: imageData.data[0].revised_prompt || prompt
-              });
-            } else if (imageData.url) {
-              // Direct URL format
-              generatedImages.push({
-                prompt: prompt,
-                url: imageData.url,
-                revised_prompt: prompt
-              });
-            } else if (imageData.images && imageData.images[0]) {
-              // Alternative format
-              generatedImages.push({
-                prompt: prompt,
-                url: imageData.images[0].url,
-                revised_prompt: prompt
-              });
+            const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${openAIApiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: 'gpt-image-1',
+                prompt: enhancedPrompt,
+                n: 1,
+                size: '1024x1024',
+                quality: 'high',
+                output_format: 'png'
+              }),
+            });
+
+            if (imageResponse.ok) {
+              const imageData = await imageResponse.json();
+              console.log('OpenAI Image generation success for prompt:', prompt.substring(0, 50) + '...');
+              
+              // gpt-image-1 always returns base64
+              if (imageData.data && imageData.data[0] && imageData.data[0].b64_json) {
+                generatedImages.push({
+                  prompt: prompt,
+                  image: imageData.data[0].b64_json,
+                  format: 'png',
+                  revised_prompt: imageData.data[0].revised_prompt || prompt
+                });
+                console.log(`Successfully generated image ${generatedImages.length} for carousel`);
+              }
+            } else {
+              const errorText = await imageResponse.text();
+              console.error('Failed to generate image for prompt:', prompt.substring(0, 50) + '...', 'Status:', imageResponse.status, 'Error:', errorText);
             }
-          } else {
-            const errorText = await imageResponse.text();
-            console.error('Failed to generate image for prompt:', prompt, 'Error:', errorText);
+          } catch (error) {
+            console.error('Error generating image for prompt:', prompt.substring(0, 50) + '...', 'Error:', error instanceof Error ? error.message : 'Unknown error');
           }
-        } catch (error) {
-          console.error('Error generating image:', error);
         }
       }
+      
+      console.log(`Generated ${generatedImages.length} images out of ${generatedContent.carousel_prompts.length} prompts`);
     }
 
     const result = {
