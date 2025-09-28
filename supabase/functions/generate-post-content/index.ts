@@ -372,9 +372,7 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
                 model: 'gpt-image-1',
                 prompt: enhancedPrompt,
                 n: 1,
-                size: '1024x1024',
-                quality: 'high',
-                output_format: 'png'
+                size: '1024x1024'
               }),
             });
 
