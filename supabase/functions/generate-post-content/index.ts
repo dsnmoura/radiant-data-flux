@@ -355,12 +355,14 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
         }
       } else {
         console.log('Starting image generation with OpenAI API...');
+        console.log('OpenAI API Key exists:', !!openAIApiKey);
         
         for (const prompt of generatedContent.carousel_prompts.slice(0, 3)) {
           try {
             const enhancedPrompt = `${prompt}. High quality, professional, suitable for ${network} social media post. Modern design, vibrant colors, engaging composition.`;
             
             console.log(`Attempting to generate image for prompt: ${prompt.substring(0, 50)}...`);
+            console.log('Using OpenAI model: dall-e-3');
             
             const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
               method: 'POST',
@@ -369,21 +371,23 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                model: 'gpt-image-1',
+                model: 'dall-e-3',
                 prompt: enhancedPrompt,
                 n: 1,
-                size: '1024x1024'
+                size: '1024x1024',
+                quality: 'standard',
+                response_format: 'b64_json'
               }),
             });
 
             console.log(`OpenAI API response status: ${imageResponse.status}`);
+            console.log(`OpenAI API response ok: ${imageResponse.ok}`);
 
             if (imageResponse.ok) {
               const imageData = await imageResponse.json();
               console.log('OpenAI Image generation success for prompt:', prompt.substring(0, 50) + '...');
-              console.log('Image data structure:', Object.keys(imageData));
+              console.log('Image data structure keys:', Object.keys(imageData));
               
-              // gpt-image-1 always returns base64
               if (imageData.data && imageData.data[0] && imageData.data[0].b64_json) {
                 generatedImages.push({
                   prompt: prompt,
