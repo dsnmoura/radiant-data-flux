@@ -89,6 +89,10 @@ serve(async (req) => {
     if (!openRouterApiKey) {
       throw new Error('OpenRouter API key not configured');
     }
+    
+    if (!openAIApiKey) {
+      console.warn('OpenAI API key not configured - image generation will be skipped');
+    }
 
     // Use o conteúdo fornecido ou o tema como fallback
     const contentToProcess = content || theme || objective;
@@ -281,11 +285,82 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
       console.log('Generating images for carousel using OpenAI...');
       
       if (!openAIApiKey) {
-        console.error('OpenAI API key not configured for image generation');
-      } else {
+        console.log('OpenAI API key not configured, using OpenRouter Flux model as fallback');
+        
+        // Fallback to OpenRouter Flux model
         for (const prompt of generatedContent.carousel_prompts.slice(0, 3)) {
           try {
             const enhancedPrompt = `${prompt}. High quality, professional, suitable for ${network} social media post. Modern design, vibrant colors, engaging composition.`;
+            
+            console.log(`Generating image via OpenRouter for: ${prompt.substring(0, 50)}...`);
+            
+            const imageResponse = await fetch('https://openrouter.ai/api/v1/images/generations', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${openRouterApiKey}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://postcraft.app',
+                'X-Title': 'PostCraft - AI Image Generator',
+              },
+              body: JSON.stringify({
+                model: 'black-forest-labs/flux-1-schnell',
+                prompt: enhancedPrompt,
+                width: 1024,
+                height: 1024,
+                steps: 4,
+                response_format: 'url'
+              }),
+            });
+
+            console.log(`OpenRouter API response status: ${imageResponse.status}`);
+
+            if (imageResponse.ok) {
+              const imageData = await imageResponse.json();
+              console.log('OpenRouter Image generation success');
+              console.log('Image data:', imageData);
+              
+              // Handle different response formats from OpenRouter
+              let imageUrl = null;
+              if (imageData.data && imageData.data[0] && imageData.data[0].url) {
+                imageUrl = imageData.data[0].url;
+              } else if (imageData.url) {
+                imageUrl = imageData.url;
+              } else if (imageData.images && imageData.images[0] && imageData.images[0].url) {
+                imageUrl = imageData.images[0].url;
+              }
+              
+              if (imageUrl) {
+                generatedImages.push({
+                  prompt: prompt,
+                  url: imageUrl,
+                  format: 'png',
+                  revised_prompt: prompt
+                });
+                console.log(`Successfully generated image ${generatedImages.length} for carousel`);
+              } else {
+                console.error('No image URL found in response:', imageData);
+              }
+            } else {
+              const errorText = await imageResponse.text();
+              console.error('OpenRouter API Error:', {
+                status: imageResponse.status,
+                statusText: imageResponse.statusText,
+                error: errorText,
+                prompt: prompt.substring(0, 50) + '...'
+              });
+            }
+          } catch (error) {
+            console.error('Error generating image via OpenRouter:', prompt.substring(0, 50) + '...', 'Error:', error instanceof Error ? error.message : 'Unknown error');
+          }
+        }
+      } else {
+        console.log('Starting image generation with OpenAI API...');
+        
+        for (const prompt of generatedContent.carousel_prompts.slice(0, 3)) {
+          try {
+            const enhancedPrompt = `${prompt}. High quality, professional, suitable for ${network} social media post. Modern design, vibrant colors, engaging composition.`;
+            
+            console.log(`Attempting to generate image for prompt: ${prompt.substring(0, 50)}...`);
             
             const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
               method: 'POST',
@@ -303,9 +378,12 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
               }),
             });
 
+            console.log(`OpenAI API response status: ${imageResponse.status}`);
+
             if (imageResponse.ok) {
               const imageData = await imageResponse.json();
               console.log('OpenAI Image generation success for prompt:', prompt.substring(0, 50) + '...');
+              console.log('Image data structure:', Object.keys(imageData));
               
               // gpt-image-1 always returns base64
               if (imageData.data && imageData.data[0] && imageData.data[0].b64_json) {
@@ -316,10 +394,17 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
                   revised_prompt: imageData.data[0].revised_prompt || prompt
                 });
                 console.log(`Successfully generated image ${generatedImages.length} for carousel`);
+              } else {
+                console.error('Unexpected image data structure:', imageData);
               }
             } else {
               const errorText = await imageResponse.text();
-              console.error('Failed to generate image for prompt:', prompt.substring(0, 50) + '...', 'Status:', imageResponse.status, 'Error:', errorText);
+              console.error('OpenAI API Error:', {
+                status: imageResponse.status,
+                statusText: imageResponse.statusText,
+                error: errorText,
+                prompt: prompt.substring(0, 50) + '...'
+              });
             }
           } catch (error) {
             console.error('Error generating image for prompt:', prompt.substring(0, 50) + '...', 'Error:', error instanceof Error ? error.message : 'Unknown error');
