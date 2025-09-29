@@ -4,6 +4,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 const openRouterApiKey = Deno.env.get('OPENROUTER_API_KEY');
 const zaiApiKey = Deno.env.get('ZAI_API_KEY');
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const stabilityApiKey = Deno.env.get('STABILITY_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -434,48 +435,114 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
       console.log(`=== FIM DA GERAÇÃO DE IMAGENS ===`);
       console.log(`Resultado: ${generatedImages.length} imagens geradas de ${Math.min(generatedContent.carousel_prompts.length, 3)} solicitadas`);
       
-      // Se nenhuma imagem foi gerada, tentar método alternativo
+      // Se nenhuma imagem foi gerada, tentar métodos alternativos (Stability AI > OpenRouter)
       if (generatedImages.length === 0) {
-        console.log('⚠️ Nenhuma imagem foi gerada, tentando método alternativo...');
-        
-        try {
-          // Tentar um prompt mais simples
-          const simplePrompt = `Beautiful, professional social media image for ${network}. Modern design, vibrant colors.`;
-          
-          const fallbackResponse = await fetch('https://openrouter.ai/api/v1/images/generations', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${openRouterApiKey}`,
-              'Content-Type': 'application/json',
-              'HTTP-Referer': 'https://postcraft.app',
-              'X-Title': 'PostCraft - Fallback Image Generator',
-            },
-            body: JSON.stringify({
-              model: 'black-forest-labs/flux-1-schnell',
-              prompt: simplePrompt,
-              width: 1024,
-              height: 1024,
-              steps: 4,
-              response_format: 'url'
-            }),
-          });
-          
-          if (fallbackResponse.ok) {
-            const fallbackData = await fallbackResponse.json();
-            console.log('🔄 Tentativa de fallback bem-sucedida:', Object.keys(fallbackData));
-            
-            if (fallbackData.data && fallbackData.data[0] && fallbackData.data[0].url) {
-              generatedImages.push({
-                prompt: simplePrompt,
-                url: fallbackData.data[0].url,
-                format: 'png',
-                revised_prompt: simplePrompt
+        console.log('⚠️ Nenhuma imagem foi gerada, tentando fallback com Stability AI...');
+
+        // 1) Stability AI (secret STABILITY_API_KEY)
+        if (stabilityApiKey) {
+          for (let i = 0; i < Math.min(generatedContent.carousel_prompts.length, 3); i++) {
+            const prompt = generatedContent.carousel_prompts[i];
+            try {
+              const enhancedPrompt = `${prompt}. High quality, professional, suitable for ${network} social media post. Modern design, vibrant colors, engaging composition.`;
+              console.log(`[Stability ${i + 1}/3] Gerando imagem...`);
+
+              const stabilityResp = await fetch('https://api.stability.ai/v1/generation/stable-diffusion-xl-1024x1024/text-to-image', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${stabilityApiKey}`,
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                  text_prompts: [{ text: enhancedPrompt }],
+                  cfg_scale: 7,
+                  height: 1024,
+                  width: 1024,
+                  samples: 1,
+                  steps: 30,
+                }),
               });
-              console.log('✅ Imagem de fallback gerada com sucesso!');
+
+              console.log(`[Stability ${i + 1}/3] Status: ${stabilityResp.status}`);
+              if (stabilityResp.ok) {
+                const stabilityData = await stabilityResp.json();
+                const artifact = stabilityData.artifacts?.[0];
+                if (artifact?.base64) {
+                  const dataUrl = `data:image/png;base64,${artifact.base64}`;
+                  generatedImages.push({
+                    prompt,
+                    url: dataUrl,
+                    image: artifact.base64,
+                    format: 'png',
+                    revised_prompt: prompt,
+                  });
+                  console.log(`[Stability ${i + 1}/3] ✅ Imagem gerada com sucesso!`);
+                } else {
+                  console.error(`[Stability ${i + 1}/3] ❌ Estrutura inesperada`, Object.keys(stabilityData ?? {}));
+                }
+              } else {
+                const errText = await stabilityResp.text();
+                console.error(`[Stability ${i + 1}/3] ❌ Erro da API`, { status: stabilityResp.status, error: errText });
+              }
+
+              if (i < 2) {
+                console.log('Aguardando 2 segundos antes da próxima geração via Stability...');
+                await new Promise(r => setTimeout(r, 2000));
+              }
+            } catch (err) {
+              console.error(`[Stability ${i + 1}/3] ❌ Erro na geração:`, err instanceof Error ? err.message : 'Unknown error');
             }
           }
-        } catch (fallbackError) {
-          console.error('❌ Erro no fallback:', fallbackError instanceof Error ? fallbackError.message : 'Unknown error');
+        } else {
+          console.warn('STABILITY_API_KEY não configurada, pulando fallback de Stability AI.');
+        }
+
+        // 2) OpenRouter Flux (como último recurso)
+        if (generatedImages.length === 0) {
+          console.log('Tentando fallback via OpenRouter Flux...');
+          try {
+            // Tentar um prompt mais simples
+            const simplePrompt = `Beautiful, professional social media image for ${network}. Modern design, vibrant colors.`;
+
+            const fallbackResponse = await fetch('https://openrouter.ai/api/v1/images/generations', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${openRouterApiKey}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://postcraft.app',
+                'X-Title': 'PostCraft - Fallback Image Generator',
+              },
+              body: JSON.stringify({
+                model: 'black-forest-labs/flux-1-schnell',
+                prompt: simplePrompt,
+                width: 1024,
+                height: 1024,
+                steps: 4,
+                response_format: 'url'
+              }),
+            });
+
+            if (fallbackResponse.ok) {
+              const fallbackData = await fallbackResponse.json();
+              console.log('🔄 Tentativa de fallback (OpenRouter) bem-sucedida:', Object.keys(fallbackData));
+
+              if (fallbackData.data && fallbackData.data[0] && fallbackData.data[0].url) {
+                generatedImages.push({
+                  prompt: simplePrompt,
+                  url: fallbackData.data[0].url,
+                  format: 'png',
+                  revised_prompt: simplePrompt
+                });
+                console.log('✅ Imagem de fallback (OpenRouter) gerada com sucesso!');
+              }
+            } else {
+              const errorText = await fallbackResponse.text();
+              console.error('❌ Erro no fallback OpenRouter:', { status: fallbackResponse.status, error: errorText });
+            }
+          } catch (fallbackError) {
+            console.error('❌ Erro no fallback OpenRouter:', fallbackError instanceof Error ? fallbackError.message : 'Unknown error');
+          }
         }
       }
     }
