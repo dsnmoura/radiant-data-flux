@@ -54,10 +54,10 @@ const withRetry = async <T>(
 
 // AI Model configurations
 const AI_MODELS: Record<string, { provider: string; endpoint: string; model: string }> = {
-  'glm-4.5-air': { provider: 'openrouter', endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'zhipuai/glm-4-airx' },
+  'glm-4.5-air': { provider: 'openrouter', endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'zai/glm-4.5-air:free' },
   'gpt-4o-mini': { provider: 'openrouter', endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'openai/gpt-4o-mini' },
   'gpt-4o': { provider: 'openrouter', endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'openai/gpt-4o' },
-  'claude-3-sonnet': { provider: 'openrouter', endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'anthropic/claude-3-sonnet-20240229' }
+  'claude-3-sonnet': { provider: 'openrouter', endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'anthropic/claude-3-5-sonnet-20241022' }
 };
 
 // Generate AI content with retry and timeout
