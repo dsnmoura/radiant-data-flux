@@ -547,6 +547,27 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
       }
     }
 
+    // Garantia: sempre retornar pelo menos 1 imagem (SVG placeholder) para preview
+    if (generateImages && generatedImages.length === 0) {
+      console.warn('⚠️ Nenhuma imagem de IA pôde ser gerada. Retornando placeholder SVG.');
+      const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#06B6D4"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#g)"/>
+  <g fill="#ffffff" fill-opacity="0.9">
+    <path d="M704 352H320c-17.7 0-32 14.3-32 32v256c0 17.7 14.3 32 32 32h384c17.7 0 32-14.3 32-32V384c0-17.7-14.3-32-32-32zm-16 80-88 88-80-80-144 144v-176h312z"/>
+  </g>
+  <text x="50%" y="85%" text-anchor="middle" font-family="Inter, Arial" font-size="40" fill="#ffffff" opacity="0.9">Placeholder gerado automaticamente</text>
+</svg>`;
+      const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      generatedImages.push({ prompt: 'placeholder', url: dataUrl, format: 'svg', revised_prompt: 'placeholder' });
+    }
+
     const result = {
       ...generatedContent,
       generated_images: generatedImages,
