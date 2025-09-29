@@ -179,7 +179,7 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
 };
 
 // Image generation with multiple API fallbacks
-const generateImages = async (prompts: string[], network: string): Promise<any[]> => {
+const generateImageContent = async (prompts: string[], network: string): Promise<any[]> => {
   if (!prompts || prompts.length === 0) return [];
   
   log('info', 'Starting image generation', { promptCount: prompts.length, network });
@@ -437,7 +437,7 @@ serve(async (req) => {
     // Step 2: Generate images if requested
     let generatedImages: any[] = [];
     if (generateImages && generatedContent.carousel_prompts) {
-      generatedImages = await generateImages(generatedContent.carousel_prompts, network);
+      generatedImages = await generateImageContent(generatedContent.carousel_prompts, network);
     }
 
     // Step 3: Prepare final response
