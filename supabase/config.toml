@@ -1,1 +1,7 @@
 project_id = "ddqailhqsxbuhvyxuxfa"
+
+[functions.generate-post-content]
+verify_jwt = false
+
+[functions.publish-scheduled-posts]
+verify_jwt = false

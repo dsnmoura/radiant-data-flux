@@ -172,6 +172,24 @@ const CreatePost = () => {
         return;
       }
 
+      // Handle both success and error responses with fallback content
+      if (data.success === false && data.fallback_content) {
+        console.warn('Using fallback content due to API issues:', data.error);
+        
+        // Use fallback content
+        const fallbackResponse = {
+          success: true,
+          content: data.fallback_content,
+          images: [],
+          metadata: data.metadata
+        };
+        
+        setGeneratedPost(fallbackResponse);
+        setCurrentStep(4);
+        toast.warning(`Conteúdo gerado com limitações: ${data.error}`);
+        return;
+      }
+
       if (!data.success) {
         console.error('AI generation failed:', data);
         toast.error(`Erro na IA: ${data.error || "Falha na geração de conteúdo"}`);
@@ -181,11 +199,14 @@ const CreatePost = () => {
       setGeneratedPost(data);
       setCurrentStep(4);
       
-      // Mostrar informação sobre imagens geradas
-      if (data.generated_images && data.generated_images.length > 0) {
-        toast.success(`Conteúdo gerado com ${data.generated_images.length} imagens!`);
+      // Show better feedback about generated content
+      const imageCount = data.images?.length || 0;
+      const processingTime = data.metadata?.total_processing_time || 0;
+      
+      if (imageCount > 0) {
+        toast.success(`✅ Conteúdo gerado com ${imageCount} imagens! (${Math.round(processingTime/1000)}s)`);
       } else {
-        toast.success("Conteúdo gerado! (Imagens não disponíveis)");
+        toast.success(`✅ Conteúdo gerado! Imagens não disponíveis no momento. (${Math.round(processingTime/1000)}s)`);
       }
       
     } catch (error) {
