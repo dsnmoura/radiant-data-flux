@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
+import ImageGenerationProgress from "@/components/ImageGenerationProgress";
 import { useState } from "react";
 import { 
   Instagram, 
@@ -26,6 +27,12 @@ const CreatePost = () => {
   const [postContent, setPostContent] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generatedPost, setGeneratedPost] = useState<any>(null);
+  const [imageGenerationProgress, setImageGenerationProgress] = useState({
+    currentStep: 0,
+    totalSteps: 0,
+    estimatedTime: "2-3 minutos",
+    currentPrompt: ""
+  });
 
   const totalSteps = 4;
 
@@ -104,6 +111,15 @@ const CreatePost = () => {
     }
 
     setIsGenerating(true);
+    
+    // Simular progresso da geração de imagens
+    setImageGenerationProgress({
+      currentStep: 1,
+      totalSteps: 3,
+      estimatedTime: "2-3 minutos",
+      currentPrompt: "Preparando geração de imagens..."
+    });
+
     try {
       console.log('Calling generate-post-content with:', {
         network: selectedNetwork,
@@ -112,6 +128,20 @@ const CreatePost = () => {
         objective: "Criar conteúdo engajante"
       });
 
+      // Simular progresso durante a geração
+      const progressInterval = setInterval(() => {
+        setImageGenerationProgress(prev => {
+          if (prev.currentStep < prev.totalSteps) {
+            return {
+              ...prev,
+              currentStep: prev.currentStep + 1,
+              currentPrompt: `Gerando imagem ${prev.currentStep + 1} de ${prev.totalSteps}...`
+            };
+          }
+          return prev;
+        });
+      }, 15000); // Atualizar a cada 15 segundos
+
       const { data, error } = await supabase.functions.invoke('generate-post-content', {
         body: {
           network: selectedNetwork,
@@ -119,12 +149,14 @@ const CreatePost = () => {
           content: postContent,
           objective: "Criar conteúdo engajante",
           theme: postContent,
-          model: 'gpt-4o-mini',
+          model: 'glm-4.5-air', // Usar GLM 4.5 Air por padrão
           generateImages: true,
           generateCaption: true,
           generateHashtags: true
         }
       });
+
+      clearInterval(progressInterval);
 
       console.log('Edge function response:', { data, error });
 
@@ -148,12 +180,20 @@ const CreatePost = () => {
 
       setGeneratedPost(data);
       setCurrentStep(4);
-      toast.success("Conteúdo gerado com sucesso!");
+      
+      // Mostrar informação sobre imagens geradas
+      if (data.generated_images && data.generated_images.length > 0) {
+        toast.success(`Conteúdo gerado com ${data.generated_images.length} imagens!`);
+      } else {
+        toast.success("Conteúdo gerado! (Imagens não disponíveis)");
+      }
+      
     } catch (error) {
       console.error('Unexpected error:', error);
       toast.error(`Erro inesperado: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     } finally {
       setIsGenerating(false);
+      setImageGenerationProgress({ currentStep: 0, totalSteps: 0, estimatedTime: "", currentPrompt: "" });
     }
   };
 
@@ -374,6 +414,17 @@ const CreatePost = () => {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Progresso da Geração de Imagens */}
+      {isGenerating && (
+        <ImageGenerationProgress
+          isGenerating={isGenerating}
+          currentStep={imageGenerationProgress.currentStep}
+          totalSteps={imageGenerationProgress.totalSteps}
+          estimatedTime={imageGenerationProgress.estimatedTime}
+          currentImagePrompt={imageGenerationProgress.currentPrompt}
+        />
       )}
 
       {/* Passo 4: Post Gerado */}

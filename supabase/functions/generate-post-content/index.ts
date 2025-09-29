@@ -282,18 +282,21 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
     // Generate images using OpenAI API if requested and prompts exist
     let generatedImages = [];
     if (generateImages && generatedContent.carousel_prompts && Array.isArray(generatedContent.carousel_prompts)) {
-      console.log('Generating images for carousel using OpenAI...');
-      console.log('This may take 30-60 seconds, please wait...');
+      console.log('=== INÍCIO DA GERAÇÃO DE IMAGENS ===');
+      console.log('Número de prompts para gerar:', generatedContent.carousel_prompts.length);
+      console.log('Tempo estimado: 60-120 segundos...');
       
       if (!openAIApiKey) {
-        console.log('OpenAI API key not configured, using OpenRouter Flux model as fallback');
+        console.log('OpenAI não configurado, usando OpenRouter Flux...');
         
-        // Fallback to OpenRouter Flux model (keep existing code)
-        for (const prompt of generatedContent.carousel_prompts.slice(0, 3)) {
+        // Fallback to OpenRouter Flux model
+        for (let i = 0; i < Math.min(generatedContent.carousel_prompts.length, 3); i++) {
+          const prompt = generatedContent.carousel_prompts[i];
+          
           try {
             const enhancedPrompt = `${prompt}. High quality, professional, suitable for ${network} social media post. Modern design, vibrant colors, engaging composition.`;
             
-            console.log(`Generating image via OpenRouter for: ${prompt.substring(0, 50)}...`);
+            console.log(`[OpenRouter ${i + 1}/3] Gerando imagem: ${prompt.substring(0, 50)}...`);
             
             const imageResponse = await fetch('https://openrouter.ai/api/v1/images/generations', {
               method: 'POST',
@@ -313,11 +316,11 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
               }),
             });
 
-            console.log(`OpenRouter API response status: ${imageResponse.status}`);
+            console.log(`[OpenRouter ${i + 1}/3] Status: ${imageResponse.status}`);
 
             if (imageResponse.ok) {
               const imageData = await imageResponse.json();
-              console.log('OpenRouter Image generation success');
+              console.log(`[OpenRouter ${i + 1}/3] Resposta recebida:`, Object.keys(imageData));
               
               // Handle different response formats from OpenRouter
               let imageUrl = null;
@@ -336,26 +339,30 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
                   format: 'png',
                   revised_prompt: prompt
                 });
-                console.log(`Successfully generated image ${generatedImages.length} for carousel`);
+                console.log(`[OpenRouter ${i + 1}/3] ✅ Imagem gerada com sucesso!`);
               } else {
-                console.error('No image URL found in response:', imageData);
+                console.error(`[OpenRouter ${i + 1}/3] ❌ URL da imagem não encontrada:`, imageData);
               }
             } else {
               const errorText = await imageResponse.text();
-              console.error('OpenRouter API Error:', {
+              console.error(`[OpenRouter ${i + 1}/3] ❌ Erro da API:`, {
                 status: imageResponse.status,
-                statusText: imageResponse.statusText,
-                error: errorText,
-                prompt: prompt.substring(0, 50) + '...'
+                error: errorText
               });
             }
+            
+            // Delay between requests to avoid rate limits
+            if (i < 2) {
+              console.log(`Aguardando 3 segundos antes da próxima geração...`);
+              await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+            
           } catch (error) {
-            console.error('Error generating image via OpenRouter:', prompt.substring(0, 50) + '...', 'Error:', error instanceof Error ? error.message : 'Unknown error');
+            console.error(`[OpenRouter ${i + 1}/3] ❌ Erro na geração:`, error instanceof Error ? error.message : 'Unknown error');
           }
         }
       } else {
-        console.log('Starting image generation with OpenAI DALL-E 3...');
-        console.log('OpenAI API Key configured, generating high-quality images...');
+        console.log('OpenAI configurado, usando DALL-E 3...');
         
         // Generate images sequentially to avoid rate limits
         for (let i = 0; i < Math.min(generatedContent.carousel_prompts.length, 3); i++) {
@@ -364,7 +371,7 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
           try {
             const enhancedPrompt = `${prompt}. High quality, professional, suitable for ${network} social media post. Modern design, vibrant colors, engaging composition.`;
             
-            console.log(`[${i + 1}/3] Generating image with DALL-E 3 for: ${prompt.substring(0, 50)}...`);
+            console.log(`[DALL-E ${i + 1}/3] Gerando imagem: ${prompt.substring(0, 50)}...`);
             
             const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
               method: 'POST',
@@ -382,11 +389,11 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
               }),
             });
 
-            console.log(`[${i + 1}/3] OpenAI API response status: ${imageResponse.status}`);
+            console.log(`[DALL-E ${i + 1}/3] Status: ${imageResponse.status}`);
 
             if (imageResponse.ok) {
               const imageData = await imageResponse.json();
-              console.log(`[${i + 1}/3] DALL-E 3 generation success!`);
+              console.log(`[DALL-E ${i + 1}/3] Resposta recebida com sucesso!`);
               
               if (imageData.data && imageData.data[0] && imageData.data[0].b64_json) {
                 // Convert base64 to data URL for immediate use
@@ -400,33 +407,77 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
                   revised_prompt: imageData.data[0].revised_prompt || prompt
                 });
                 
-                console.log(`[${i + 1}/3] Successfully generated and converted image to data URL`);
+                console.log(`[DALL-E ${i + 1}/3] ✅ Imagem convertida para data URL!`);
               } else {
-                console.error(`[${i + 1}/3] Unexpected DALL-E response structure:`, imageData);
+                console.error(`[DALL-E ${i + 1}/3] ❌ Estrutura inesperada:`, Object.keys(imageData));
               }
             } else {
               const errorText = await imageResponse.text();
-              console.error(`[${i + 1}/3] DALL-E 3 API Error:`, {
+              console.error(`[DALL-E ${i + 1}/3] ❌ Erro da API:`, {
                 status: imageResponse.status,
-                statusText: imageResponse.statusText,
-                error: errorText,
-                prompt: prompt.substring(0, 50) + '...'
+                error: errorText
               });
             }
             
             // Add delay between requests to avoid rate limits
             if (i < 2) {
-              console.log(`Waiting 2 seconds before next image generation...`);
-              await new Promise(resolve => setTimeout(resolve, 2000));
+              console.log(`Aguardando 5 segundos antes da próxima geração...`);
+              await new Promise(resolve => setTimeout(resolve, 5000));
             }
             
           } catch (error) {
-            console.error(`[${i + 1}/3] Error generating image:`, error instanceof Error ? error.message : 'Unknown error');
+            console.error(`[DALL-E ${i + 1}/3] ❌ Erro na geração:`, error instanceof Error ? error.message : 'Unknown error');
           }
         }
       }
       
-      console.log(`Image generation complete: ${generatedImages.length} images generated out of ${Math.min(generatedContent.carousel_prompts.length, 3)} requested`);
+      console.log(`=== FIM DA GERAÇÃO DE IMAGENS ===`);
+      console.log(`Resultado: ${generatedImages.length} imagens geradas de ${Math.min(generatedContent.carousel_prompts.length, 3)} solicitadas`);
+      
+      // Se nenhuma imagem foi gerada, tentar método alternativo
+      if (generatedImages.length === 0) {
+        console.log('⚠️ Nenhuma imagem foi gerada, tentando método alternativo...');
+        
+        try {
+          // Tentar um prompt mais simples
+          const simplePrompt = `Beautiful, professional social media image for ${network}. Modern design, vibrant colors.`;
+          
+          const fallbackResponse = await fetch('https://openrouter.ai/api/v1/images/generations', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openRouterApiKey}`,
+              'Content-Type': 'application/json',
+              'HTTP-Referer': 'https://postcraft.app',
+              'X-Title': 'PostCraft - Fallback Image Generator',
+            },
+            body: JSON.stringify({
+              model: 'black-forest-labs/flux-1-schnell',
+              prompt: simplePrompt,
+              width: 1024,
+              height: 1024,
+              steps: 4,
+              response_format: 'url'
+            }),
+          });
+          
+          if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json();
+            console.log('🔄 Tentativa de fallback bem-sucedida:', Object.keys(fallbackData));
+            
+            if (fallbackData.data && fallbackData.data[0] && fallbackData.data[0].url) {
+              generatedImages.push({
+                prompt: simplePrompt,
+                url: fallbackData.data[0].url,
+                format: 'png',
+                revised_prompt: simplePrompt
+              });
+              console.log('✅ Imagem de fallback gerada com sucesso!');
+            }
+          }
+        } catch (fallbackError) {
+          console.error('❌ Erro no fallback:', fallbackError instanceof Error ? fallbackError.message : 'Unknown error');
+        }
+      }
     }
 
     const result = {
