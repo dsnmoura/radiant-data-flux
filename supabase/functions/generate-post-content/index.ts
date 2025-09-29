@@ -169,19 +169,19 @@ ${customPrompt ? `\nINSTRUÇÕES PERSONALIZADAS: ${customPrompt}` : ''}`;
     let requestBody;
     let headers;
 
-    // Use only OpenRouter with working models
+    // Use specified model, prioritizing GLM 4.5 Air
     let workingModel = model;
     
-    // Map all models to working OpenRouter models
-    if (model === 'glm-4.5-air' || model === 'glm-4-9b' || model === 'glm-4-32b') {
-      workingModel = 'gpt-4o-mini';
-      console.log(`Model ${model} not available, using ${workingModel} instead`);
-    }
-    
-    const fullModelName = workingModel === 'gpt-4o-mini' ? 'openai/gpt-4o-mini' :
+    // Map models to their correct OpenRouter identifiers
+    const fullModelName = workingModel === 'glm-4.5-air' ? 'zhipuai/glm-4-airx' : // Correct GLM 4.5 Air model
+      workingModel === 'glm-4-9b' ? 'zhipuai/glm-4-9b-chat' :
+      workingModel === 'glm-4-32b' ? 'zhipuai/glm-4-plus' :
+      workingModel === 'gpt-4o-mini' ? 'openai/gpt-4o-mini' :
       workingModel === 'gpt-4o' ? 'openai/gpt-4o' :
       workingModel === 'claude-3-sonnet-20240229' ? 'anthropic/claude-3-sonnet-20240229' :
       `openai/${workingModel}`;
+      
+    console.log(`Using model: ${model} -> ${fullModelName}`);
       
     apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
     headers = {

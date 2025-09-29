@@ -32,7 +32,8 @@ const Settings = () => {
           network: 'instagram',
           template: 'ig-post',
           objective: 'Promoção',
-          theme: 'Teste de conexão com OpenRouter API',
+          theme: 'Teste de conexão com GLM 4.5 Air API',
+          model: 'glm-4.5-air',
           generateImages: false,
           generateCaption: true,
           generateHashtags: false
@@ -114,10 +115,10 @@ const Settings = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bot className="h-5 w-5 text-primary" />
-            Integração com IA - OpenRouter
+            Integração GLM 4.5 Air - OpenRouter
           </CardTitle>
           <CardDescription>
-            Configure e gerencie sua integração com OpenRouter.ai para geração de conteúdo
+            Configure e gerencie sua integração com GLM 4.5 Air via OpenRouter (Modelo gratuito)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -126,8 +127,8 @@ const Settings = () => {
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
               <div>
-                <p className="font-medium">Status da API</p>
-                <p className="text-sm text-muted-foreground">OpenRouter configurado e ativo</p>
+                <p className="font-medium">GLM 4.5 Air API</p>
+                <p className="text-sm text-muted-foreground">Modelo gratuito configurado via OpenRouter</p>
               </div>
             </div>
             <Badge variant="secondary" className="bg-green-100 text-green-700">
@@ -156,8 +157,8 @@ const Settings = () => {
               <Label>Modelo de IA Atual</Label>
               <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg">
                 <Sparkles className="h-4 w-4 text-primary" />
-                <span className="font-medium">GPT-4o Mini</span>
-                <Badge variant="outline">Rápido & Eficiente</Badge>
+                <span className="font-medium">GLM 4.5 Air</span>
+                <Badge variant="outline">Gratuito & Rápido</Badge>
               </div>
             </div>
           </div>
@@ -170,7 +171,7 @@ const Settings = () => {
             </div>
             
             <p className="text-sm text-muted-foreground">
-              Teste a integração com OpenRouter para garantir que tudo está funcionando
+              Teste a integração com GLM 4.5 Air para garantir que a geração de conteúdo está funcionando
             </p>
             
             <Button 
