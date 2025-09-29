@@ -85,7 +85,7 @@ const Settings = () => {
         return;
       }
 
-      if (data?.generated_images && data.generated_images.length > 0) {
+      if (data?.images && data.images.length > 0) {
         setTestResult("✅ Conexão com OpenAI funcionando perfeitamente!");
         toast.success("Teste OpenAI bem-sucedido!");
       } else {

@@ -176,15 +176,15 @@ const CreatePost = () => {
       if (data.success === false && data.fallback_content) {
         console.warn('Using fallback content due to API issues:', data.error);
         
-        // Use fallback content
-        const fallbackResponse = {
-          success: true,
-          content: data.fallback_content,
-          images: [],
-          metadata: data.metadata
+        // Normalize fallback data structure
+        const normalizedFallback = {
+          caption: data.fallback_content.caption,
+          hashtags: data.fallback_content.hashtags,
+          generated_images: [],
+          model_used: 'fallback',
         };
         
-        setGeneratedPost(fallbackResponse);
+        setGeneratedPost(normalizedFallback);
         setCurrentStep(4);
         toast.warning(`Conteúdo gerado com limitações: ${data.error}`);
         return;
@@ -196,7 +196,15 @@ const CreatePost = () => {
         return;
       }
 
-      setGeneratedPost(data);
+      // Normalize successful response data structure
+      const normalizedData = {
+        caption: data.content?.caption,
+        hashtags: data.content?.hashtags,
+        generated_images: data.images || [],
+        model_used: data.metadata?.model_used,
+      };
+
+      setGeneratedPost(normalizedData);
       setCurrentStep(4);
       
       // Show better feedback about generated content
