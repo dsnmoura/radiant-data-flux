@@ -149,7 +149,7 @@ const CreatePost = () => {
           content: postContent,
           objective: "Criar conteúdo engajante",
           theme: postContent,
-          model: 'glm-4.5-air', // Usar GLM 4.5 Air por padrão
+          model: 'gpt-4o-mini', // Usar GPT-4o-mini como fallback por padrão
           generateImages: true,
           generateCaption: true,
           generateHashtags: true
@@ -164,6 +164,45 @@ const CreatePost = () => {
         console.error('Supabase function error:', error);
         toast.error(`Erro na função: ${error.message || 'Erro desconhecido'}`);
         return;
+      }
+
+      // Check for model ID error and retry with fallback model
+      if (data && !data.success && data.error && data.error.includes('not a valid model ID')) {
+        console.warn('Model ID error detected, retrying with gpt-4o-mini fallback...');
+        
+        const { data: retryData, error: retryError } = await supabase.functions.invoke('generate-post-content', {
+          body: {
+            network: selectedNetwork,
+            template: selectedTemplate,
+            content: postContent,
+            objective: "Criar conteúdo engajante",
+            theme: postContent,
+            model: 'gpt-4o-mini', // Force fallback model
+            generateImages: true,
+            generateCaption: true,
+            generateHashtags: true
+          }
+        });
+
+        if (retryError) {
+          console.error('Retry also failed:', retryError);
+          toast.error(`Erro no fallback: ${retryError.message || 'Erro desconhecido'}`);
+          return;
+        }
+
+        if (retryData && retryData.success) {
+          const normalizedRetryData = {
+            caption: retryData.content?.caption,
+            hashtags: retryData.content?.hashtags,
+            generated_images: retryData.images || [],
+            model_used: retryData.metadata?.model_used,
+          };
+
+          setGeneratedPost(normalizedRetryData);
+          setCurrentStep(4);
+          toast.success("Conteúdo gerado com modelo de fallback!");
+          return;
+        }
       }
 
       if (!data) {

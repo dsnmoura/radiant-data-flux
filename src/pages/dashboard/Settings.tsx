@@ -33,7 +33,7 @@ const Settings = () => {
           template: 'ig-post',
           objective: 'Promoção',
           theme: 'Teste de conexão com GLM 4.5 Air API',
-          model: 'glm-4.5-air',
+          model: 'gpt-4o-mini',
           generateImages: false,
           generateCaption: true,
           generateHashtags: false
@@ -43,6 +43,32 @@ const Settings = () => {
       if (error) {
         setTestResult(`Erro: ${error.message}`);
         toast.error("Falha no teste de conexão");
+        return;
+      }
+
+      // Check for model ID error and retry with fallback
+      if (data && !data.success && data.error && data.error.includes('not a valid model ID')) {
+        const { data: retryData, error: retryError } = await supabase.functions.invoke('generate-post-content', {
+          body: {
+            network: 'instagram',
+            template: 'ig-post',
+            objective: 'Teste',
+            theme: 'Teste de conexão com modelo de fallback',
+            model: 'gpt-4o-mini',
+            generateImages: false,
+            generateCaption: true,
+            generateHashtags: false
+          }
+        });
+
+        if (retryError || !retryData?.content?.caption) {
+          setTestResult("❌ Falha mesmo com modelo de fallback");
+          toast.error("Teste de fallback falhou");
+          return;
+        }
+
+        setTestResult("✅ Conexão funcionando com modelo de fallback!");
+        toast.success("Teste bem-sucedido com fallback!");
         return;
       }
 
